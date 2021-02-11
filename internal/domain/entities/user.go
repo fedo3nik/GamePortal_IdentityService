@@ -6,4 +6,5 @@ type User struct {
 	Nickname     string
 	Password     string
 	Email        string
+	TokenHash    string
 }

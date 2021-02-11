@@ -2,22 +2,46 @@ package service
 
 import (
 	"context"
+	"crypto/rand"
 	"log"
-	"net/http"
+	"math/big"
+	"strings"
+
+	"github.com/fedo3nik/GamePortal_IdentityService/config"
 
 	"github.com/fedo3nik/GamePortal_IdentityService/internal/application"
 	"github.com/fedo3nik/GamePortal_IdentityService/internal/domain/entities"
 	e "github.com/fedo3nik/GamePortal_IdentityService/internal/error"
 	"github.com/fedo3nik/GamePortal_IdentityService/internal/infrastructure/database/mongodb"
-	"github.com/gorilla/securecookie"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
+const hashLen = 15
+
+func GenerateHash(email, password, nickname string) string {
+	arrBytes := email + password + nickname
+	sb := strings.Builder{}
+	sb.Grow(hashLen)
+
+	arrBytesLen := len(arrBytes)
+
+	for i := 0; i < hashLen; i++ {
+		idx, err := rand.Int(rand.Reader, big.NewInt(int64(arrBytesLen)))
+		if err != nil {
+			return ""
+		}
+
+		sb.WriteByte(arrBytes[idx.Int64()])
+	}
+
+	return sb.String()
+}
+
 type User interface {
 	SignUp(ctx context.Context, nickname, email, password string) (*entities.User, error)
-	SignIn(ctx context.Context, email, password string) (*entities.User, *http.Cookie, error)
+	SignIn(ctx context.Context, email, password string) (*entities.User, string, string, error)
 	AddWarning(ctx context.Context, id string) (*entities.User, error)
 	RemoveWarning(ctx context.Context, id string) (*entities.User, error)
 	IsBanned(ctx context.Context, id string) (*entities.User, bool, error)
@@ -57,12 +81,13 @@ func (u UserService) SignUp(ctx context.Context, nickname, email, password strin
 	}
 
 	if checkUser {
-		return nil, errors.Wrap(e.ErrDB, "user with this email already exist")
+		return nil, errors.Wrap(e.ErrSignUp, "user with this email already exist")
 	}
 
 	usr.Nickname = nickname
 	usr.Email = email
 	usr.Password = password
+	usr.TokenHash = GenerateHash(email, password, nickname)
 
 	result, err := mongodb.Insert(ctx, usersCollection, &usr)
 	if err != nil {
@@ -79,13 +104,13 @@ func (u UserService) SignUp(ctx context.Context, nickname, email, password strin
 	return &usr, nil
 }
 
-func (u UserService) SignIn(ctx context.Context, email, password string) (*entities.User, *http.Cookie, error) {
+func (u UserService) SignIn(ctx context.Context, email, password string) (eU *entities.User, aToken, rToken string, err error) {
 	if !application.IsEmailValid(email) {
-		return nil, nil, errors.Wrap(e.ErrValidation, "invalid email")
+		return nil, "", "", errors.Wrap(e.ErrValidation, "invalid email")
 	}
 
 	if !application.IsPasswordValid(password) {
-		return nil, nil, errors.Wrap(e.ErrValidation, "invalid password")
+		return nil, "", "", errors.Wrap(e.ErrValidation, "invalid password")
 	}
 
 	var usr entities.User
@@ -95,7 +120,7 @@ func (u UserService) SignIn(ctx context.Context, email, password string) (*entit
 	user, err := mongodb.GetDocumentByEmail(ctx, usersCollection, email)
 	if err != nil {
 		log.Printf("Get document from db err: %v", err)
-		return nil, nil, err
+		return nil, "", "", err
 	}
 
 	if password == user.Password {
@@ -105,25 +130,27 @@ func (u UserService) SignIn(ctx context.Context, email, password string) (*entit
 		usr.Nickname = user.Nickname
 		usr.WarningCount = user.WarningCount
 
-		hashKey := []byte(email + password)
-		s := securecookie.New(hashKey, nil)
-
-		encoded, errCookie := s.Encode("user-cookie", usr.Nickname)
-		if errCookie != nil {
-			log.Printf("Secure cookie encoded error: %v", errCookie)
-			return nil, nil, errCookie
+		c, err := config.NewConfig()
+		if err != nil {
+			return nil, "", "", err
 		}
 
-		cookie := &http.Cookie{
-			Name:  "user-cookie",
-			Value: encoded,
-			Path:  "/user/sign-in",
+		authService := application.NewAuthService(c)
+
+		accessToken, err := authService.GenerateAccessToken(&usr)
+		if err != nil {
+			return nil, "", "", err
 		}
 
-		return &usr, cookie, nil
+		refreshToken, err := authService.GenerateRefreshToken(&usr)
+		if err != nil {
+			return nil, "", "", err
+		}
+
+		return &usr, accessToken, refreshToken, nil
 	}
 
-	return nil, nil, errors.Wrap(e.ErrSignIn, "wrong password")
+	return nil, "", "", errors.Wrap(e.ErrSignIn, "wrong password")
 }
 
 func (u UserService) AddWarning(ctx context.Context, id string) (*entities.User, error) {

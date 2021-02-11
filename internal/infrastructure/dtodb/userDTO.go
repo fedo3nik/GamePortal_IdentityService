@@ -1,4 +1,4 @@
-package dtodb
+package mongodb
 
 import "go.mongodb.org/mongo-driver/bson/primitive"
 
@@ -8,4 +8,5 @@ type UserDTO struct {
 	Nickname     string             `bson:"nickname,omitempty"`
 	Password     string             `bson:"password,omitempty"`
 	Email        string             `bson:"email,omitempty"`
+	TokenHash    string             `bson:"tokenHash,omitempty"`
 }
