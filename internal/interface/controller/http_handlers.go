@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"path"
 
+	dto "github.com/fedo3nik/GamePortal_IdentityService/internal/interface/controller/dto"
+
 	"github.com/fedo3nik/GamePortal_IdentityService/internal/application/service"
 	"github.com/fedo3nik/GamePortal_IdentityService/internal/domain/entities"
 	e "github.com/fedo3nik/GamePortal_IdentityService/internal/error"
@@ -49,6 +51,7 @@ func errorType(w http.ResponseWriter, err error) {
 		_, printErr := fmt.Fprintf(w, "Request error: %v", err)
 		if printErr != nil {
 			log.Printf("Fprint error: %v", printErr)
+			return
 		}
 
 		w.WriteHeader(http.StatusNotFound)
@@ -60,6 +63,7 @@ func errorType(w http.ResponseWriter, err error) {
 		_, printErr := fmt.Fprintf(w, "Request error: %v", err)
 		if printErr != nil {
 			log.Printf("Fprint error: %v", printErr)
+			return
 		}
 
 		w.WriteHeader(http.StatusConflict)
@@ -70,6 +74,7 @@ func errorType(w http.ResponseWriter, err error) {
 	_, printErr := fmt.Fprintf(w, "Internal server error: %v", err)
 	if printErr != nil {
 		log.Printf("Fprint error: %v", printErr)
+		return
 	}
 
 	w.WriteHeader(http.StatusInternalServerError)
@@ -82,6 +87,8 @@ func NewHTTPSignInHandler(userService service.User) *HTTPSignInHandler {
 func (hh HTTPSignInHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var u entities.User
 
+	var resp dto.SignInResponse
+
 	reqErr := json.NewDecoder(r.Body).Decode(&u)
 	if reqErr != nil {
 		log.Printf("Body read error: %v", reqErr)
@@ -90,22 +97,22 @@ func (hh HTTPSignInHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	usr, cookie, err := hh.usersService.SignIn(r.Context(), u.Email, u.Password)
-
+	usr, aToken, rToken, err := hh.usersService.SignIn(r.Context(), u.Email, u.Password)
 	if err != nil {
 		errorType(w, err)
+		return
 	}
 
-	http.SetCookie(w, cookie)
+	resp.ID = usr.ID
+	resp.Email = usr.Email
+	resp.Nickname = usr.Nickname
+	resp.AccessToken = aToken
+	resp.RefreshToken = rToken
 
-	err = json.NewEncoder(w).Encode(&usr)
+	err = json.NewEncoder(w).Encode(&resp)
 	if err != nil {
 		log.Printf("Encode error: %v", err)
-	}
-
-	err = json.NewEncoder(w).Encode(&cookie.Value)
-	if err != nil {
-		log.Printf("Encode error: %v", err)
+		return
 	}
 }
 
@@ -115,6 +122,8 @@ func NewHTTPSignUpHandler(usersService service.User) *HTTPSignUpHandler {
 
 func (hh HTTPSignUpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var u entities.User
+
+	var resp dto.SignUpResponse
 
 	reqErr := json.NewDecoder(r.Body).Decode(&u)
 	if reqErr != nil {
@@ -127,11 +136,18 @@ func (hh HTTPSignUpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	usr, err := hh.usersService.SignUp(r.Context(), u.Nickname, u.Email, u.Password)
 	if err != nil {
 		errorType(w, err)
+		return
 	}
 
-	err = json.NewEncoder(w).Encode(&usr)
+	resp.ID = usr.ID
+	resp.Email = usr.Email
+	resp.Password = usr.Password
+	resp.Nickname = usr.Nickname
+
+	err = json.NewEncoder(w).Encode(&resp)
 	if err != nil {
 		log.Printf("Encode error: %v", err)
+		return
 	}
 }
 
@@ -140,17 +156,24 @@ func NewHTTPAddWarnHandler(userService service.User) *HTTPAddWarnHandler {
 }
 
 func (hh HTTPAddWarnHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	var resp dto.AddWarnResponse
+
 	url := r.URL.Path
 	idString := path.Base(url)
 
 	usr, err := hh.userService.AddWarning(r.Context(), idString)
 	if err != nil {
 		errorType(w, err)
+		return
 	}
 
-	err = json.NewEncoder(w).Encode(&usr)
+	resp.ID = usr.ID
+	resp.SuccessAdd = true
+
+	err = json.NewEncoder(w).Encode(&resp)
 	if err != nil {
 		log.Printf("Encode error: %v", err)
+		return
 	}
 }
 
@@ -159,17 +182,24 @@ func NewHTTPRemHandler(userService service.User) *HTTPRemWarnHandler {
 }
 
 func (hh HTTPRemWarnHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	var resp dto.RemWarnResponse
+
 	url := r.URL.Path
 	idString := path.Base(url)
 
 	usr, err := hh.userService.RemoveWarning(r.Context(), idString)
 	if err != nil {
 		errorType(w, err)
+		return
 	}
 
-	err = json.NewEncoder(w).Encode(&usr)
+	resp.ID = usr.ID
+	resp.SuccessRem = true
+
+	err = json.NewEncoder(w).Encode(&resp)
 	if err != nil {
 		log.Printf("Encode error: %v", err)
+		return
 	}
 }
 
@@ -178,21 +208,23 @@ func NewHTTPIsBannedHandler(userService service.User) *HTTPIsBanedHandler {
 }
 
 func (hh HTTPIsBanedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	var resp dto.IsBannedResponse
+
 	url := r.URL.Path
 	idString := path.Base(url)
 
 	usr, isBanned, err := hh.userService.IsBanned(r.Context(), idString)
 	if err != nil {
 		errorType(w, err)
+		return
 	}
 
-	err = json.NewEncoder(w).Encode(&usr)
-	if err != nil {
-		log.Printf("Encode error: %v", err)
-	}
+	resp.ID = usr.ID
+	resp.IsBanned = isBanned
 
-	err = json.NewEncoder(w).Encode(&isBanned)
+	err = json.NewEncoder(w).Encode(&resp)
 	if err != nil {
 		log.Printf("Encode error: %v", err)
+		return
 	}
 }
