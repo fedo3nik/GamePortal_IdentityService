@@ -5,9 +5,13 @@ workflows:
   production:
     jobs:
       - lint:
-          context: App
+          context: GamePortal
       - test:
-          context: App
+          context: GamePortal
+      - build_and_push_image:
+          context: GamePortal
+      - deploy:
+          context: GamePortal
 
 jobs:
   lint:
@@ -24,3 +28,35 @@ jobs:
       - run: apk add git build-base
       - checkout
       - run: IDENTITYSERVICE_CONN_URI="mongodb://localhost:27017" IDENTITYSERVICE_DB="identityserviceTestDb" go test -v ./...
+  # todo: Trigger this job only when changes appear in master and tag set
+  # todo: Make job manual confirmation
+  build_and_push_image:
+    docker:
+      - image: docker:20.10.3-git
+      - image: amazon/aws-cli:amd64
+    steps:
+      - setup_remote_docker
+      - run: apk --update add make curl unzip
+      - checkout
+      - run: docker build -t ${DOCKER_REGISTRY_HOST}/identity-service:latest .
+      - run: curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && unzip awscliv2.zip && ./aws/install
+      - run: /usr/local/bin/aws --version
+#      - run: /usr/local/bin/aws configure set aws_access_key_id ${STAGING_AWS_ACCESS_KEY_ID} && /usr/local/bin/aws configure set aws_secret_access_key ${STAGING_AWS_SECRET_ACCESS_KEY} && /usr/local/bin/aws configure set region ${STAGING_AWS_REGION}
+#      - run: /usr/local/bin/aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin 281520863489.dkr.ecr.eu-central-1.amazonaws.com/v2/
+      - run: docker push ${DOCKER_REGISTRY_HOST}/identity-service:latest
+  # todo: Trigger this job only when changes appear in master and tag set
+  # todo: Make job manual confirmation
+  deploy:
+    docker:
+      - image: alpine:3.13.2
+    steps:
+      # Adding SSH key: https://circleci.com/docs/2.0/add-ssh-key/
+
+      # If the following doesn't work try this:
+      # - run: \
+      #    ssh ${REMOTE_USER}@${REMOTE_HOST} \
+      #    'echo ${DOCKER_REGISTRY_PASS} | docker login ${DOCKER_REGISTRY_HOST} --username ${DOCKER_REGISTRY_USER} --password-stdin \
+      #    docker run --restart unless-stopped ${DOCKER_REGISTRY_HOST}/identity-service:latest'
+      - run: ssh ${REMOTE_USER}@${REMOTE_HOST}
+      - run: echo ${DOCKER_REGISTRY_PASS} | docker login ${DOCKER_REGISTRY_HOST} --username ${DOCKER_REGISTRY_USER} --password-stdin
+      - run: docker run --restart unless-stopped ${DOCKER_REGISTRY_HOST}/identity-service:latest
