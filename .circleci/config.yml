@@ -1,0 +1,59 @@
+version: 2
+
+workflows:
+  version: 2
+  production:
+    jobs:
+      - lint:
+          context: App
+      - test:
+          context: App
+      - build_and_push_image:
+          context: App
+      - deploy:
+          context: App
+
+jobs:
+  lint:
+    docker:
+      - image: golangci/golangci-lint:v1.36-alpine
+    steps:
+      - checkout
+      - run: golangci-lint run -v --timeout=5m
+  test:
+    docker:
+      - image: golang:1.15.8-alpine3.13
+      - image: mongo:3.6.22
+    steps:
+      - run: apk add git build-base
+      - checkout
+      - run: IDENTITYSERVICE_CONN_URI="mongodb://localhost:27017" IDENTITYSERVICE_DB="identityserviceTestDb" go test -v ./...
+  # todo: Trigger this job only when changes appear in master and tag set
+  # todo: Make job manual confirmation
+  build_and_push_image:
+    docker:
+      - image: docker:20.10.3-git
+    steps:
+      - setup_remote_docker
+      - run: apk --update add make
+      - checkout
+      - run: docker build -t ${DOCKER_REGISTRY_HOST}/identity-service:latest .
+      - run: echo ${DOCKER_REGISTRY_PASS} | docker login ${DOCKER_REGISTRY_HOST} --username ${DOCKER_REGISTRY_USER} --password-stdin
+      - run: docker push ${DOCKER_REGISTRY_HOST}/identity-service:latest
+  # todo: Trigger this job only when changes appear in master and tag set
+  # todo: Make job manual confirmation
+  deploy:
+    docker:
+      - image: alpine:3.13.2
+    steps:
+      # Adding SSH key: https://circleci.com/docs/2.0/add-ssh-key/
+
+      # If the following doesn't work try this:
+      # - run: \
+      #    ssh ${REMOTE_USER}@${REMOTE_HOST} \
+      #    'echo ${DOCKER_REGISTRY_PASS} | docker login ${DOCKER_REGISTRY_HOST} --username ${DOCKER_REGISTRY_USER} --password-stdin \
+      #    docker run --restart unless-stopped ${DOCKER_REGISTRY_HOST}/identity-service:latest'
+      - run: ssh ${REMOTE_USER}@${REMOTE_HOST}
+      - run: echo ${DOCKER_REGISTRY_PASS} | docker login ${DOCKER_REGISTRY_HOST} --username ${DOCKER_REGISTRY_USER} --password-stdin
+      - run: docker run --restart unless-stopped ${DOCKER_REGISTRY_HOST}/identity-service:latest
+
