@@ -61,7 +61,13 @@ jobs:
       - setup_remote_docker
       - run: apk update
       - run: apk add openssh
+      - run: echo ${IDENTITY_SERVICE_CONN_URI}
       - run: |
           ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} \
             "aws ecr get-login-password --region ${STAGING_AWS_REGION} | docker login --username AWS --password-stdin ${DOCKER_REGISTRY_HOST}; \
-            docker run --restart unless-stopped -e IDENTITY_SERVICE_HOST=${IDENTITY_SERVICE_HOST} -e IDENTITY_SERVICE_PORT=${IDENTITY_SERVICE_PORT} -e IDENTITY_SERVICE_CONN_URI=${IDENTITY_SERVICE_CONN_URI} -e IDENTITY_SERVICE_DB=${IDENTITY_SERVICE_DB} ${DOCKER_REGISTRY_HOST}/identity-service:latest"
+            docker run --restart unless-stopped \
+              -e IDENTITY_SERVICE_HOST=${IDENTITY_SERVICE_HOST} \
+              -e IDENTITY_SERVICE_PORT=${IDENTITY_SERVICE_PORT} \
+              -e IDENTITY_SERVICE_CONN_URI='${IDENTITY_SERVICE_CONN_URI}' \
+              -e IDENTITY_SERVICE_DB=${IDENTITY_SERVICE_DB} \
+              ${DOCKER_REGISTRY_HOST}/identity-service:latest"
