@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -37,6 +38,10 @@ func main() {
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), contextTimeout*time.Second)
+
+	log.Println("Conn uri: ", c.ConnURI)
+	fmt.Println(c.ConnURI)
+
 	mongoClient := initClient(ctx, c.ConnURI)
 	userService := service.NewUserService(mongoClient, c.DB)
 
