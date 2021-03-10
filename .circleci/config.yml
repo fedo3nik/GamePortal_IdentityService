@@ -68,6 +68,6 @@ jobs:
             docker run --restart unless-stopped \
               -e IDENTITY_SERVICE_HOST=${IDENTITY_SERVICE_HOST} \
               -e IDENTITY_SERVICE_PORT=${IDENTITY_SERVICE_PORT} \
-              -e IDENTITY_SERVICE_CONN_URI=${IDENTITY_SERVICE_CONN_URI} \
+              -e IDENTITY_SERVICE_CONN_URI='${IDENTITY_SERVICE_CONN_URI}' \
               -e IDENTITY_SERVICE_DB=${IDENTITY_SERVICE_DB} \
               ${DOCKER_REGISTRY_HOST}/identity-service:latest"
