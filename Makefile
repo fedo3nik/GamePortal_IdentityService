@@ -11,7 +11,7 @@ go_lint:
 	docker run --rm -v ${PWD}:/app -w /app/ golangci/golangci-lint:v1.36-alpine golangci-lint run -v --timeout=5m
 
 mongo_run:
-	docker run -it -v mongodata:/data/db -p 27017:27017 --name mongodb -d mongo:3.6.22
+	docker run -it -v mongodata:/data/db -p 27017:27017 --name mongodb -d mongo:4.4.4
 
 cover_profile:
 	go test -coverprofile coverage.out ./...
