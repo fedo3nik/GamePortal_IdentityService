@@ -1,17 +1,22 @@
-version: 2.1
+version: 2
 
 workflows:
-  version: 2.1
+  version: 2
   production:
     jobs:
       - lint:
           context: GamePortal
       - test:
           context: GamePortal
-      - deploy:
-          context: GamePortal
       - build_and_push_image:
           context: GamePortal
+          requires:
+            - test
+            - lint
+      - deploy:
+          context: GamePortal
+          requires:
+            - build_and_push_image
 
 jobs:
   lint:
@@ -27,7 +32,7 @@ jobs:
     steps:
       - run: apk add git build-base
       - checkout
-      - run: IDENTITYSERVICE_CONN_URI="mongodb://localhost:27017" IDENTITYSERVICE_DB="identityserviceTestDb" go test -v ./...
+      - run: IDENTITY_SERVICE_CONN_URI=${IDENTITY_SERVICE_CONN_URI} IDENTITY_SERVICE_DB=${IDENTITY_SERVICE_DB_TEST} go test -v ./...
   # todo: Trigger this job only when changes appear in master and tag set
   # todo: Make job manual confirmation
   build_and_push_image:
@@ -43,21 +48,26 @@ jobs:
             -e AWS_SECRET_ACCESS_KEY=${STAGING_AWS_SECRET_ACCESS_KEY} \
             -e AWS_DEFAULT_REGION=${STAGING_AWS_REGION} \
             amazon/aws-cli:2.1.28'
-          aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin ${DOCKER_REGISTRY_HOST}
+          aws ecr get-login-password --region ${STAGING_AWS_REGION} | docker login --username AWS --password-stdin ${DOCKER_REGISTRY_HOST}
       - run: docker push ${DOCKER_REGISTRY_HOST}/identity-service:latest
   # todo: Trigger this job only when changes appear in master and tag set
   # todo: Make job manual confirmation
   deploy:
     docker:
       - image: alpine:3.13.2
+      - image: mongo:3.6.22
     steps:
-      # Adding SSH key: https://circleci.com/docs/2.0/add-ssh-key/
-
-      # If the following doesn't work try this:
-      # - run: \
-      #    ssh ${REMOTE_USER}@${REMOTE_HOST} \
-      #    'echo ${DOCKER_REGISTRY_PASS} | docker login ${DOCKER_REGISTRY_HOST} --username ${DOCKER_REGISTRY_USER} --password-stdin \
-      #    docker run --restart unless-stopped ${DOCKER_REGISTRY_HOST}/identity-service:latest'
-      - run: ssh ${REMOTE_USER}@${REMOTE_HOST}
-      - run: echo ${DOCKER_REGISTRY_PASS} | docker login ${DOCKER_REGISTRY_HOST} --username ${DOCKER_REGISTRY_USER} --password-stdin
-      - run: docker run --restart unless-stopped ${DOCKER_REGISTRY_HOST}/identity-service:latest
+      - checkout
+      - setup_remote_docker
+      - run: apk update
+      - run: apk add openssh
+      - run: echo ${IDENTITY_SERVICE_CONN_URI}
+      - run: |
+          ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} \
+            "aws ecr get-login-password --region ${STAGING_AWS_REGION} | docker login --username AWS --password-stdin ${DOCKER_REGISTRY_HOST}; \
+            docker run --restart unless-stopped \
+              -e IDENTITY_SERVICE_HOST=${IDENTITY_SERVICE_HOST} \
+              -e IDENTITY_SERVICE_PORT=${IDENTITY_SERVICE_PORT} \
+              -e IDENTITY_SERVICE_CONN_URI=${IDENTITY_SERVICE_CONN_URI} \
+              -e IDENTITY_SERVICE_DB=${IDENTITY_SERVICE_DB} \
+              ${DOCKER_REGISTRY_HOST}/identity-service:latest"
