@@ -40,8 +40,10 @@ jobs:
       - image: docker:20.10.3-git
     steps:
       - checkout
+      - run: git branch
+      - run: cat ./cmd/server/main.go
       - setup_remote_docker
-      - run: docker build -t ${DOCKER_REGISTRY_HOST}/identity-service:latest .
+      - run: docker build --no-cache -t ${DOCKER_REGISTRY_HOST}/identity-service:latest .
       - run: |
           alias aws='docker run --rm \
             -e AWS_ACCESS_KEY_ID=${STAGING_AWS_ACCESS_KEY_ID} \

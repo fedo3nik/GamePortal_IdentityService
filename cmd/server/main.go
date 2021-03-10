@@ -39,6 +39,7 @@ func main() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), contextTimeout*time.Second)
 
+	log.Println("Conn uri: ", c.ConnURI)
 	fmt.Println(c.ConnURI)
 
 	mongoClient := initClient(ctx, c.ConnURI)
