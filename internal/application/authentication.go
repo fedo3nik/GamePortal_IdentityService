@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"io/ioutil"
-	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	c "github.com/fedo3nik/GamePortal_IdentityService/config"
@@ -14,9 +13,8 @@ import (
 )
 
 const (
-	aKey            = "access"
-	rKey            = "refresh"
-	timeDurationSec = 300
+	aKey = "access"
+	rKey = "refresh"
 )
 
 type AuthService struct {
@@ -104,8 +102,7 @@ func (a *AuthService) GenerateAccessToken(user *entities.User) (string, error) {
 		UserID:  user.ID,
 		KeyType: tokenType,
 		Claims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(time.Second * time.Duration(timeDurationSec)).Unix(),
-			Issuer:    "identityservice.auth.service",
+			Issuer: "identityservice.auth.service",
 		},
 	}
 
