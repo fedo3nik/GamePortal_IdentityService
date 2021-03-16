@@ -26,4 +26,4 @@ ci_test:
 	circleci local execute --job test
 
 ci_build:
-	circleci local execute --job build_and_push_image -e DOCKER_REGISTRY_HOST=281520863489.dkr.ecr.eu-central-1.amazonaws.com -e STAGING_AWS_ACCESS_KEY_ID=AKIAI44U3T4U4TSNTP3Q -e STAGING_AWS_SECRET_ACCESS_KEY=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 -e STAGING_AWS_REGION=eu-central-1
+	circleci local execute --job build_and_push_image -e DOCKER_REGISTRY_HOST=${DOCKER_REGISTRY_HOST} -e STAGING_AWS_ACCESS_KEY_ID=${STAGING_AWS_ACCESS_KEY_ID} -e STAGING_AWS_SECRET_ACCESS_KEY=${STAGING_AWS_SECRET_ACCESS_KEY} -e STAGING_AWS_REGION=${STAGING_AWS_REGION}
