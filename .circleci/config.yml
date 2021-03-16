@@ -67,7 +67,7 @@ jobs:
              docker stop identity-service; \
              docker rm identity-service; \
              docker rmi ${DOCKER_REGISTRY_HOST}/identity-service:latest; \
-             docker run -d --restart unless-stopped -p 8080:8080 \
+             docker run -d --restart unless-stopped -p 8081:8080 \
               --name identity-service \
               -e IDENTITY_SERVICE_CONN_URI=${IDENTITY_SERVICE_CONN_URI} \
               -e IDENTITY_SERVICE_DB=${IDENTITY_SERVICE_DB} \
