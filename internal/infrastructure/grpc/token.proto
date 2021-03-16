@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+option go_package = "./internal/infrastructure/grpc";
+
+service Sender {
+  rpc Send(Empty) returns (SendResponse) {}
+}
+
+message Empty {
+
+}
+
+message SendResponse {
+  string accessPublicKey = 1;
+  string refreshPublicKey = 2;
+}

@@ -3,8 +3,12 @@ package main
 import (
 	"context"
 	"log"
+	"net"
 	"net/http"
 	"time"
+
+	grpcInfra "github.com/fedo3nik/GamePortal_IdentityService/internal/infrastructure/grpc"
+	"google.golang.org/grpc"
 
 	"github.com/fedo3nik/GamePortal_IdentityService/config"
 	"github.com/fedo3nik/GamePortal_IdentityService/internal/application/service"
@@ -41,6 +45,16 @@ func main() {
 	log.Println("Conn uri: ", c.ConnURI)
 
 	mongoClient := initClient(ctx, c.ConnURI)
+
+	defer func() {
+		cancel()
+
+		err = mongoClient.Disconnect(ctx)
+		if err != nil {
+			log.Printf("Disconnect error: %v", err)
+		}
+	}()
+
 	userService := service.NewUserService(mongoClient, c.DB)
 
 	signUpHandler := controller.NewHTTPSignUpHandler(userService)
@@ -57,17 +71,25 @@ func main() {
 	handler.Handle("/user/remove-warning/{id}", remWarningHandler).Methods("PUT")
 	handler.Handle("/user/is-banned/{id}", isBannedHandler).Methods("GET")
 
-	err = http.ListenAndServe(c.Host+c.Port, handler)
-	if err != nil {
-		log.Panicf("Listen %v error: %v", c.Host+c.Port, err)
-	}
-
-	defer func() {
-		cancel()
-
-		err = mongoClient.Disconnect(ctx)
+	go func() {
+		err = http.ListenAndServe(c.Host+c.Port, handler)
 		if err != nil {
-			log.Printf("Disconnect error: %v", err)
+			log.Panicf("Listen %v error: %v", c.Host+c.Port, err)
 		}
 	}()
+
+	s := grpc.NewServer()
+	srv := grpcInfra.NewServerGrpc(c)
+	grpcInfra.RegisterSenderServer(s, srv)
+
+	l, err := net.Listen("tcp", c.Host+c.GrpcPort)
+	if err != nil {
+		log.Panicf("Listen error: %v", err)
+	}
+
+	if err := s.Serve(l); err != nil {
+		log.Panicf("gRpc server error: %v", err)
+	}
+
+	select {}
 }
