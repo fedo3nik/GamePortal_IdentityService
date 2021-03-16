@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	g "github.com/fedo3nik/GamePortal_IdentityService/internal/infrastructure/grpc"
+	grpcInfra "github.com/fedo3nik/GamePortal_IdentityService/internal/infrastructure/grpc"
 	"google.golang.org/grpc"
 
 	"github.com/fedo3nik/GamePortal_IdentityService/config"
@@ -76,8 +76,8 @@ func main() {
 	}()
 
 	s := grpc.NewServer()
-	srv := g.NewServerGrpc(c)
-	g.RegisterSenderServer(s, srv)
+	srv := grpcInfra.NewServerGrpc(c)
+	grpcInfra.RegisterSenderServer(s, srv)
 
 	l, err := net.Listen("tcp", c.Host+c.GrpcPort)
 	if err != nil {
