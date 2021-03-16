@@ -41,6 +41,7 @@ func main() {
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), contextTimeout*time.Second)
+
 	mongoClient := initClient(ctx, c.ConnURI)
 
 	defer func() {
