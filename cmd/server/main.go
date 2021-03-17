@@ -40,6 +40,13 @@ func main() {
 		log.Panic(err)
 	}
 
+	// log for test CI/CD
+	log.Printf("Host - %v", c.Host)
+	log.Printf("Service port - %v", c.Port)
+	log.Printf("Mongo conn URI - %v", c.ConnURI)
+	log.Printf("Database - %v", c.DB)
+	log.Printf("Grpc port - %v", c.GrpcPort)
+
 	ctx, cancel := context.WithTimeout(context.Background(), contextTimeout*time.Second)
 	mongoClient := initClient(ctx, c.ConnURI)
 
