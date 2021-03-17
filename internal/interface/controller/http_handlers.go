@@ -80,6 +80,10 @@ func errorType(w http.ResponseWriter, err error) {
 	w.WriteHeader(http.StatusInternalServerError)
 }
 
+func parseURL(r *http.Request) string {
+	return path.Base(r.URL.Path)
+}
+
 func NewHTTPSignInHandler(userService service.User) *HTTPSignInHandler {
 	return &HTTPSignInHandler{usersService: userService}
 }
@@ -158,8 +162,7 @@ func NewHTTPAddWarnHandler(userService service.User) *HTTPAddWarnHandler {
 func (hh HTTPAddWarnHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var resp dto.AddWarnResponse
 
-	url := r.URL.Path
-	idString := path.Base(url)
+	idString := parseURL(r)
 
 	usr, err := hh.userService.AddWarning(r.Context(), idString)
 	if err != nil {
@@ -184,8 +187,7 @@ func NewHTTPRemHandler(userService service.User) *HTTPRemWarnHandler {
 func (hh HTTPRemWarnHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var resp dto.RemWarnResponse
 
-	url := r.URL.Path
-	idString := path.Base(url)
+	idString := parseURL(r)
 
 	usr, err := hh.userService.RemoveWarning(r.Context(), idString)
 	if err != nil {

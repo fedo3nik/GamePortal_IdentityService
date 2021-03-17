@@ -8,6 +8,8 @@ linters-settings:
   funlen:
     lines: 100
     statements: 50
+  dupl:
+    threshold: 100
   gci:
     local-prefixes: github.com/golangci/golangci-lint
   goconst:
@@ -64,6 +66,7 @@ linters:
     - deadcode
     - depguard
     - dogsled
+    - dupl
     - errcheck
     - exhaustive
     - funlen
