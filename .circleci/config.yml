@@ -1,0 +1,80 @@
+version: 2
+
+workflows:
+  version: 2
+  production:
+    jobs:
+      - lint:
+          context: GamePortal
+      - test:
+          context: GamePortal
+      - build_and_push_image:
+          context: GamePortal
+          requires:
+            - test
+            - lint
+      - deploy:
+          context: GamePortal
+          requires:
+            - build_and_push_image
+
+jobs:
+  lint:
+    docker:
+      - image: golangci/golangci-lint:v1.36-alpine
+    steps:
+      - checkout
+      - run: golangci-lint run -v --timeout=5m
+  test:
+    docker:
+      - image: golang:1.15.8-alpine3.13
+      - image: mongo:3.6.22
+    steps:
+      - run: apk add git build-base
+      - checkout
+      - run: IDENTITY_SERVICE_CONN_URI=${IDENTITY_SERVICE_CONN_URI_TEST} IDENTITY_SERVICE_DB=${IDENTITY_SERVICE_DB_TEST} go test -v ./...
+  # todo: Trigger this job only when changes appear in master and tag set
+  # todo: Make job manual confirmation
+  build_and_push_image:
+    docker:
+      - image: docker:20.10.3-git
+    steps:
+      - checkout
+      - run: git branch
+      - run: cat ./cmd/server/main.go
+      - setup_remote_docker
+      - run: docker build --no-cache -t ${DOCKER_REGISTRY_HOST}/identity-service:latest .
+      - run: |
+          alias aws='docker run --rm \
+            -e AWS_ACCESS_KEY_ID=${STAGING_AWS_ACCESS_KEY_ID} \
+            -e AWS_SECRET_ACCESS_KEY=${STAGING_AWS_SECRET_ACCESS_KEY} \
+            -e AWS_DEFAULT_REGION=${STAGING_AWS_REGION} \
+            amazon/aws-cli:2.1.28'
+          aws ecr get-login-password --region ${STAGING_AWS_REGION} | docker login --username AWS --password-stdin ${DOCKER_REGISTRY_HOST}
+      - run: docker push ${DOCKER_REGISTRY_HOST}/identity-service:latest
+  # todo: Trigger this job only when changes appear in master and tag set
+  # todo: Make job manual confirmation
+  deploy:
+    docker:
+      - image: alpine:3.13.2
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run: apk update && apk add openssh
+      - run: |
+          ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} \
+            "aws ecr get-login-password --region ${STAGING_AWS_REGION} | docker login --username AWS --password-stdin ${DOCKER_REGISTRY_HOST}; \
+             docker stop identity-service; \
+             docker rm identity-service; \
+             docker rmi ${DOCKER_REGISTRY_HOST}/identity-service:latest; \
+             docker run -v ~/JwtKeys:/jwt -d --restart unless-stopped -p 8080:8080 --name identity-service \
+              -e IDENTITY_SERVICE_CONN_URI=${IDENTITY_SERVICE_CONN_URI} \
+              -e IDENTITY_SERVICE_DB=${IDENTITY_SERVICE_DB} \
+              -e IDENTITY_SERVICE_HOST=${IDENTITY_SERVICE_HOST} \
+              -e IDENTITY_SERVICE_PORT=${IDENTITY_SERVICE_PORT} \
+              -e GRPC_PORT=${GRPC_PORT} \
+              -e IDENTITY_SERVICE_REFRESH_PRIVATE_KEY=${REFRESH_PRIVATE_PATH} \
+              -e IDENTITY_SERVICE_ACCESS_PRIVATE_KEY=${ACCESS_PRIVATE_PATH} \
+              -e IDENTITY_SERVICE_REFRESH_PUBLIC_KEY=${REFRESH_PUBLIC_PATH} \
+              -e IDENTITY_SERVICE_ACCESS_PUBLIC_KEY=${ACCESS_PUBLIC_PATH} \
+             ${DOCKER_REGISTRY_HOST}/identity-service:latest"
