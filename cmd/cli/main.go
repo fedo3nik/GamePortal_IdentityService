@@ -6,9 +6,10 @@ import (
 	"os"
 	"time"
 
+	cliController "github.com/fedo3nik/GamePortal_IdentityService/internal/interface/controller/cli"
+
 	"github.com/fedo3nik/GamePortal_IdentityService/config"
 	"github.com/fedo3nik/GamePortal_IdentityService/internal/application/service"
-	"github.com/fedo3nik/GamePortal_IdentityService/internal/interface/controller"
 	"github.com/mkideal/cli"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -38,7 +39,7 @@ func InitClient(ctx context.Context, connURI string) (*mongo.Client, error) {
 }
 
 func IsBanned(ctx context.Context, userService service.User, id string) (bool, error) {
-	isBannedHandler := controller.NewCLIIsBannedHandler(userService)
+	isBannedHandler := cliController.NewCLIIsBannedHandler(userService)
 
 	isBanned, err := isBannedHandler.ServeCLI(ctx, id)
 	if err != nil {
@@ -53,7 +54,7 @@ func IsBanned(ctx context.Context, userService service.User, id string) (bool, e
 }
 
 func AddWarning(ctx context.Context, userService service.User, id string) (bool, error) {
-	addWarningHandler := controller.NewCLIAddWarningHandler(userService)
+	addWarningHandler := cliController.NewCLIAddWarningHandler(userService)
 
 	err := addWarningHandler.ServeCLI(ctx, id)
 	if err != nil {
@@ -65,7 +66,7 @@ func AddWarning(ctx context.Context, userService service.User, id string) (bool,
 }
 
 func RemoveWarning(ctx context.Context, userService service.User, id string) (bool, error) {
-	remWarningHandler := controller.NewCLIRemWarningHandler(userService)
+	remWarningHandler := cliController.NewCLIRemWarningHandler(userService)
 
 	err := remWarningHandler.ServeCLI(ctx, id)
 	if err != nil {

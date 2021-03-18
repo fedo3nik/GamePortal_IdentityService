@@ -4,8 +4,9 @@ import (
 	"context"
 	"log"
 
+	dto "github.com/fedo3nik/GamePortal_IdentityService/internal/infrastructure/dtodb"
+
 	"github.com/fedo3nik/GamePortal_IdentityService/internal/domain/entities"
-	"github.com/fedo3nik/GamePortal_IdentityService/internal/infrastructure/dtodb"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -58,8 +59,8 @@ func UpdateWarningCountField(ctx context.Context, collection *mongo.Collection, 
 	return updateResult, nil
 }
 
-func GetDocumentByID(ctx context.Context, collection *mongo.Collection, id string) (*dtodb.UserDTO, error) {
-	usr := dtodb.UserDTO{Nickname: "JhonDoe"}
+func GetDocumentByID(ctx context.Context, collection *mongo.Collection, id string) (*dto.UserDTO, error) {
+	usr := dto.UserDTO{Nickname: "JhonDoe"}
 
 	oid, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
@@ -74,8 +75,8 @@ func GetDocumentByID(ctx context.Context, collection *mongo.Collection, id strin
 	return &usr, nil
 }
 
-func GetDocumentByEmail(ctx context.Context, collection *mongo.Collection, email string) (*dtodb.UserDTO, error) {
-	usr := dtodb.UserDTO{Nickname: "JhonDoe"}
+func GetDocumentByEmail(ctx context.Context, collection *mongo.Collection, email string) (*dto.UserDTO, error) {
+	usr := dto.UserDTO{Nickname: "JhonDoe"}
 
 	err := collection.FindOne(ctx, bson.D{primitive.E{Key: "email", Value: email}}).Decode(&usr)
 	if err != nil {
