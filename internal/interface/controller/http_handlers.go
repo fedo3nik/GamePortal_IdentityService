@@ -80,10 +80,6 @@ func errorType(w http.ResponseWriter, err error) {
 	w.WriteHeader(http.StatusInternalServerError)
 }
 
-func parseURL(r *http.Request) string {
-	return path.Base(r.URL.Path)
-}
-
 func NewHTTPSignInHandler(userService service.User) *HTTPSignInHandler {
 	return &HTTPSignInHandler{usersService: userService}
 }
@@ -160,9 +156,7 @@ func NewHTTPAddWarnHandler(userService service.User) *HTTPAddWarnHandler {
 }
 
 func (hh HTTPAddWarnHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var resp dto.AddWarnResponse
-
-	idString := parseURL(r)
+	idString := path.Base(r.URL.Path)
 
 	usr, err := hh.userService.AddWarning(r.Context(), idString)
 	if err != nil {
@@ -170,8 +164,7 @@ func (hh HTTPAddWarnHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp.ID = usr.ID
-	resp.SuccessAdd = true
+	resp := dto.AddWarnResponse{ID: usr.ID, SuccessAdd: true}
 
 	err = json.NewEncoder(w).Encode(&resp)
 	if err != nil {
@@ -185,9 +178,7 @@ func NewHTTPRemHandler(userService service.User) *HTTPRemWarnHandler {
 }
 
 func (hh HTTPRemWarnHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var resp dto.RemWarnResponse
-
-	idString := parseURL(r)
+	idString := path.Base(r.URL.Path)
 
 	usr, err := hh.userService.RemoveWarning(r.Context(), idString)
 	if err != nil {
@@ -195,8 +186,7 @@ func (hh HTTPRemWarnHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp.ID = usr.ID
-	resp.SuccessRem = true
+	resp := dto.RemWarnResponse{ID: usr.ID, SuccessRem: true}
 
 	err = json.NewEncoder(w).Encode(&resp)
 	if err != nil {
