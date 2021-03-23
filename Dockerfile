@@ -7,4 +7,5 @@ FROM alpine:latest
 WORKDIR /alpine_cmd
 COPY --from=go_image /go_cmd/main /alpine_cmd
 EXPOSE 8080
+EXPOSE 5000
 CMD ["./main"]

@@ -67,7 +67,7 @@ jobs:
              docker stop identity-service; \
              docker rm identity-service; \
              docker rmi ${DOCKER_REGISTRY_HOST}/identity-service:latest; \
-             docker run -v ~/JwtKeys:/jwt -d --restart unless-stopped -p 8080:8080 --name identity-service \
+             docker run -v ~/JwtKeys:/jwt -d --restart unless-stopped -p 8080:8080 -p 5000:5000 --name identity-service \
               -e IDENTITY_SERVICE_CONN_URI=${IDENTITY_SERVICE_CONN_URI} \
               -e IDENTITY_SERVICE_DB=${IDENTITY_SERVICE_DB} \
               -e IDENTITY_SERVICE_HOST=${IDENTITY_SERVICE_HOST} \
